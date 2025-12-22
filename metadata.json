@@ -1,0 +1,9 @@
+{
+  "name": "Munesh AI CELESTIAL Astrology",
+  "description": "A comprehensive lunar astrology app utilizing Bikram Sambat dates, featuring real-time AI guidance, cosmic video generation, and aura image analysis.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
