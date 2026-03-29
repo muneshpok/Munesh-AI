@@ -1,20 +1,64 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Munesh AI Platform
 
-# Run and deploy your AI Studio app
+Munesh AI is now structured as a SaaS-ready multi-agent AI operating system with:
 
-This contains everything you need to run your app locally.
+- **FastAPI backend** for auth, agent execution, lifecycle, and task APIs
+- **Next.js frontend** for chat, dashboard, and task UX
+- **Agent orchestration layer** with lifecycle manager + execution engine
+- **Memory stack** with short-term context + long-term vector-like retrieval
+- **Tool system** with registry and built-in web search, file reader, and API caller
 
-View your app in AI Studio: https://ai.studio/apps/drive/1fQ7UDyXFrfvZUtV6wgo5jco--Y-b7XGZ
+## Repository Layout
 
-## Run Locally
+- `backend/` - FastAPI services and AI runtime components
+- `frontend/` - Next.js application (App Router)
+- `docker-compose.yml` - local multi-service runtime
 
-**Prerequisites:**  Node.js
+## Quickstart
 
+### Option A: Docker Compose
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+docker compose up
+```
+
+- Backend: `http://localhost:8000/docs`
+- Frontend: `http://localhost:3000`
+
+### Option B: Local Dev (without Docker)
+
+Backend:
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## API Endpoints
+
+- `GET /api/v1/health`
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `GET /api/v1/agents`
+- `POST /api/v1/agents/run`
+- `GET /api/v1/agents/tasks/{task_id}`
+
+## Notes
+
+This baseline is intentionally modular and ready for further enhancements:
+
+- persistent DB integration (Postgres/Redis)
+- production auth hardening
+- real embedding/vector database integration (pgvector, Milvus, Pinecone)
+- queue worker for asynchronous multi-step agent plans
