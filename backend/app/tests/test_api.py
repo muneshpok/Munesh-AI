@@ -23,16 +23,20 @@ def override_get_db():
         db.close()
 
 
-app.dependency_overrides[get_db] = override_get_db
-
-# Create tables for test DB
-Base.metadata.create_all(bind=test_engine)
-
 client = TestClient(app)
+
+
+def _setup_test_db():
+    """Ensure test DB tables exist and override is set."""
+    app.dependency_overrides[get_db] = override_get_db
+    Base.metadata.create_all(bind=test_engine)
 
 
 class TestHealthEndpoints:
     """Test health and root endpoints."""
+
+    def setup_method(self) -> None:
+        _setup_test_db()
 
     def test_root(self) -> None:
         """Test root endpoint returns app info."""
@@ -52,6 +56,9 @@ class TestHealthEndpoints:
 
 class TestWhatsAppWebhook:
     """Test WhatsApp webhook endpoints."""
+
+    def setup_method(self) -> None:
+        _setup_test_db()
 
     def test_webhook_verification_success(self) -> None:
         """Test successful webhook verification."""
@@ -141,6 +148,9 @@ class TestWhatsAppWebhook:
 
 class TestCRMEndpoints:
     """Test CRM API endpoints."""
+
+    def setup_method(self) -> None:
+        _setup_test_db()
 
     def test_get_leads(self) -> None:
         """Test getting leads."""

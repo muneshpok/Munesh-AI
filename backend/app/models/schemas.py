@@ -124,3 +124,51 @@ class BroadcastRequest(BaseModel):
     message: str
     status_filter: Optional[LeadStatusEnum] = None
     phones: Optional[List[str]] = None
+
+
+# --- Analytics / Daily Loop Schemas ---
+
+class DailyReportResponse(BaseModel):
+    id: int
+    report_date: str
+    total_leads: int
+    new_leads: int
+    contacted_leads: int
+    demo_booked: int
+    closed_leads: int
+    lost_leads: int
+    conversion_rate: float
+    messages_sent: int
+    messages_received: int
+    active_conversations: int
+    agent_breakdown: Optional[dict] = None
+    insights: Optional[List[str]] = None
+    actions_taken: Optional[List[str]] = None
+    stale_leads_count: int
+    follow_ups_sent: int
+    leads_scored: int
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AutomationLogResponse(BaseModel):
+    id: int
+    action_type: str
+    phone: Optional[str] = None
+    description: str
+    details: Optional[dict] = None
+    status: str
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AnalyticsInsights(BaseModel):
+    """Current real-time insights snapshot."""
+    funnel: dict  # stage counts and percentages
+    engagement: dict  # message activity metrics
+    agent_performance: dict  # per-agent breakdown
+    stale_leads: List[dict]  # leads needing attention
+    top_leads: List[dict]  # highest scored leads
+    recommendations: List[str]  # AI-generated recommendations

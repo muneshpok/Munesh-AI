@@ -32,6 +32,7 @@ class Lead(Base):
     )
     notes = Column(Text, nullable=True)
     source = Column(String(50), default="whatsapp")
+    lead_score = Column(Integer, default=0)  # 0-100 engagement score
     metadata_json = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -75,4 +76,47 @@ class FollowUp(Base):
     message = Column(Text, nullable=False)
     scheduled_at = Column(DateTime(timezone=True), nullable=False)
     sent = Column(Integer, default=0)  # 0 = pending, 1 = sent
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class DailyReport(Base):
+    """Stores daily analysis snapshots from the Daily Loop."""
+    __tablename__ = "daily_reports"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    report_date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD
+    # Funnel metrics snapshot
+    total_leads = Column(Integer, default=0)
+    new_leads = Column(Integer, default=0)
+    contacted_leads = Column(Integer, default=0)
+    demo_booked = Column(Integer, default=0)
+    closed_leads = Column(Integer, default=0)
+    lost_leads = Column(Integer, default=0)
+    conversion_rate = Column(Float, default=0.0)
+    # Activity metrics
+    messages_sent = Column(Integer, default=0)
+    messages_received = Column(Integer, default=0)
+    active_conversations = Column(Integer, default=0)
+    # Agent performance
+    agent_breakdown = Column(JSON, nullable=True)  # {"sales": 5, "support": 3, ...}
+    # Insights & decisions
+    insights = Column(JSON, nullable=True)  # list of insight strings
+    actions_taken = Column(JSON, nullable=True)  # list of automated actions
+    stale_leads_count = Column(Integer, default=0)
+    follow_ups_sent = Column(Integer, default=0)
+    leads_scored = Column(Integer, default=0)
+    # Metadata
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AutomationLog(Base):
+    """Tracks automated actions taken by the Daily Loop."""
+    __tablename__ = "automation_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    action_type = Column(String(50), nullable=False, index=True)  # follow_up, nurture, score, escalate
+    phone = Column(String(20), nullable=True, index=True)
+    description = Column(Text, nullable=False)
+    details = Column(JSON, nullable=True)
+    status = Column(String(20), default="completed")  # completed, failed, skipped
     created_at = Column(DateTime(timezone=True), server_default=func.now())
