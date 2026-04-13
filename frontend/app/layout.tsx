@@ -57,6 +57,12 @@ export default function RootLayout({
                   >
                     Self-Improvement
                   </a>
+                  <a
+                    href="/performance"
+                    className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Performance
+                  </a>
                 </div>
               </div>
             </div>

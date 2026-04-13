@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db, SessionLocal
 from app.core.logging import logger
-from app.routes import whatsapp, crm, health, analytics, self_improvement
+from app.routes import whatsapp, crm, health, analytics, self_improvement, performance
 from app.services.daily_loop import daily_loop
 from app.services.self_improvement import self_improvement_agent
 
@@ -43,6 +43,7 @@ def create_app() -> FastAPI:
     app.include_router(crm.router)
     app.include_router(analytics.router)
     app.include_router(self_improvement.router)
+    app.include_router(performance.router)
 
     @app.on_event("startup")
     async def startup() -> None:
