@@ -76,6 +76,7 @@ class FollowUp(Base):
     message = Column(Text, nullable=False)
     scheduled_at = Column(DateTime(timezone=True), nullable=False)
     sent = Column(Integer, default=0)  # 0 = pending, 1 = sent
+    sequence_type = Column(String(50), nullable=True, index=True)  # e.g. "new_lead", "contacted_stale", None for generic
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 

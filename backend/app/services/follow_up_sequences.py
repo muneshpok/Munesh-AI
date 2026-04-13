@@ -155,23 +155,32 @@ class FollowUpSequencer:
             return FOLLOW_UP_SEQUENCES["demo_booked_nurture"]
         return []
 
-    def get_current_step(self, db: Session, phone: str) -> int:
-        """Get the current step in the sequence for a given lead."""
-        last_follow_up = (
-            db.query(FollowUp)
-            .filter(FollowUp.phone == phone, FollowUp.sent == 1)
-            .order_by(FollowUp.created_at.desc())
-            .first()
-        )
-        if not last_follow_up:
-            return 0
+    def _get_sequence_type_for_lead(self, lead: Lead) -> Optional[str]:
+        """Get the sequence type string for a lead based on status."""
+        if lead.status == LeadStatus.NEW:
+            return "new_lead"
+        elif lead.status in (LeadStatus.CONTACTED, LeadStatus.FOLLOW_UP):
+            return "contacted_stale"
+        elif lead.status == LeadStatus.DEMO_BOOKED:
+            return "demo_booked_nurture"
+        return None
 
-        # Count how many follow-ups have been sent to this lead
-        count = (
-            db.query(func.count(FollowUp.id))
-            .filter(FollowUp.phone == phone, FollowUp.sent == 1)
-            .scalar()
+    def get_current_step(self, db: Session, phone: str, sequence_type: Optional[str] = None) -> int:
+        """Get the current step in the sequence for a given lead.
+
+        Only counts FollowUp records that belong to the same sequence_type,
+        so generic daily-loop follow-ups (sequence_type=None) don't inflate
+        the step counter.
+        """
+        query = db.query(func.count(FollowUp.id)).filter(
+            FollowUp.phone == phone, FollowUp.sent == 1
         )
+        if sequence_type:
+            query = query.filter(FollowUp.sequence_type == sequence_type)
+        else:
+            query = query.filter(FollowUp.sequence_type.isnot(None))
+
+        count = query.scalar()
         return count or 0
 
     def get_next_message(
@@ -182,7 +191,8 @@ class FollowUpSequencer:
         if not sequence:
             return None
 
-        current_step = self.get_current_step(db, lead.phone)
+        seq_type = self._get_sequence_type_for_lead(lead)
+        current_step = self.get_current_step(db, lead.phone, sequence_type=seq_type)
 
         # Check if there's a next step in the sequence
         if current_step >= len(sequence):
@@ -194,7 +204,11 @@ class FollowUpSequencer:
         if current_step > 0:
             last_follow_up = (
                 db.query(FollowUp)
-                .filter(FollowUp.phone == lead.phone, FollowUp.sent == 1)
+                .filter(
+                    FollowUp.phone == lead.phone,
+                    FollowUp.sent == 1,
+                    FollowUp.sequence_type == seq_type,
+                )
                 .order_by(FollowUp.created_at.desc())
                 .first()
             )
@@ -217,7 +231,11 @@ class FollowUpSequencer:
         )
         last_outbound_auto = (
             db.query(FollowUp)
-            .filter(FollowUp.phone == lead.phone, FollowUp.sent == 1)
+            .filter(
+                FollowUp.phone == lead.phone,
+                FollowUp.sent == 1,
+                FollowUp.sequence_type == seq_type,
+            )
             .order_by(FollowUp.created_at.desc())
             .first()
         )
@@ -277,12 +295,14 @@ class FollowUpSequencer:
                     lead.phone, next_msg["message"]
                 )
 
-                # Record the follow-up
+                # Record the follow-up with sequence_type for proper step tracking
+                seq_type = self._get_sequence_type_for_lead(lead)
                 follow_up = FollowUp(
                     phone=lead.phone,
                     message=next_msg["message"],
                     scheduled_at=datetime.now(timezone.utc),
                     sent=1,
+                    sequence_type=seq_type,
                 )
                 db.add(follow_up)
 
@@ -357,11 +377,16 @@ class FollowUpSequencer:
             return {"error": "Lead not found"}
 
         sequence = self.get_sequence_for_lead(lead)
-        current_step = self.get_current_step(db, phone)
+        seq_type = self._get_sequence_type_for_lead(lead)
+        current_step = self.get_current_step(db, phone, sequence_type=seq_type)
 
         follow_ups = (
             db.query(FollowUp)
-            .filter(FollowUp.phone == phone, FollowUp.sent == 1)
+            .filter(
+                FollowUp.phone == phone,
+                FollowUp.sent == 1,
+                FollowUp.sequence_type == seq_type,
+            )
             .order_by(FollowUp.created_at.asc())
             .all()
         )

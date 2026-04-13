@@ -64,6 +64,12 @@ export default function RootLayout({
                     Performance
                   </a>
                   <a
+                    href="/campaigns"
+                    className="text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Campaigns
+                  </a>
+                  <a
                     href="/pricing"
                     className="text-white bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-md text-sm font-medium"
                   >

@@ -59,8 +59,8 @@ confirm the booking and include "BOOK_CONFIRMED" in your response."""
 
         return AgentDecisionSchema(
             intent=IntentEnum.BOOKING,
-            action=ActionEnum.CALL_TOOL,
-            tool_name="update_crm",
-            parameters={"phone": phone, "status": "demo_booked"},
+            action=ActionEnum.RESPOND,
+            tool_name=None,
+            parameters=None,
             response=clean_response,
         )

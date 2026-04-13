@@ -101,10 +101,11 @@ class TestFollowUpSequences:
                 message="Test follow-up",
                 scheduled_at=datetime.now(timezone.utc),
                 sent=1,
+                sequence_type="new_lead",
             )
             self.db.add(fu)
         self.db.commit()
-        step = self.sequencer.get_current_step(self.db, lead.phone)
+        step = self.sequencer.get_current_step(self.db, lead.phone, sequence_type="new_lead")
         assert step == 2
 
     def test_get_next_message_first_step(self):
@@ -125,6 +126,7 @@ class TestFollowUpSequences:
             message="Step 1 msg",
             scheduled_at=datetime.now(timezone.utc),
             sent=1,
+            sequence_type="new_lead",
         )
         self.db.add(fu)
         self.db.commit()
@@ -143,6 +145,7 @@ class TestFollowUpSequences:
                 message=f"Step {i+1}",
                 scheduled_at=datetime.now(timezone.utc) - timedelta(hours=100),
                 sent=1,
+                sequence_type="demo_booked_nurture",
             )
             self.db.add(fu)
         self.db.commit()
@@ -159,6 +162,7 @@ class TestFollowUpSequences:
             message="Step 1",
             scheduled_at=datetime.now(timezone.utc) - timedelta(hours=2),
             sent=1,
+            sequence_type="new_lead",
         )
         self.db.add(fu)
         # Add a lead response 1 hour ago (after the follow-up)
