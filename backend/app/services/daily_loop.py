@@ -13,6 +13,7 @@ from app.services.memory import memory_service
 from app.core.logging import logger
 from app.core.config import settings
 from app.services.self_improvement import self_improvement_agent
+from app.services.follow_up_sequences import follow_up_sequencer
 
 
 class DailyLoop:
@@ -73,6 +74,20 @@ class DailyLoop:
         if decisions.get("escalate_high_intent"):
             escalated = self._escalate_high_intent(db)
             actions_taken.append(f"Escalated {escalated} high-intent lead(s)")
+
+        # Run smart follow-up sequences
+        logger.info("[4.3/5] Running follow-up sequences...")
+        try:
+            seq_results = await follow_up_sequencer.execute_sequences(db)
+            if seq_results["messages_sent"] > 0:
+                actions_taken.append(
+                    f"Follow-up sequences: {seq_results['messages_sent']} message(s) sent"
+                )
+            else:
+                actions_taken.append("Follow-up sequences: no messages due")
+        except Exception as e:
+            logger.error(f"Follow-up sequences failed: {e}")
+            actions_taken.append(f"Follow-up sequences: skipped (error: {e})")
 
         # Run self-improvement cycle
         logger.info("[4.5/5] Running self-improvement cycle...")
