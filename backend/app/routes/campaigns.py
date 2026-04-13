@@ -32,6 +32,13 @@ class CampaignRunRequest(BaseModel):
     audience_filter: Optional[str] = None
 
 
+class QuickCampaignRequest(BaseModel):
+    """Request body for the lightweight quick-campaign creator."""
+    name: str
+    message: str
+    audience: str = "all"
+
+
 # ─── Templates & Filters ───
 
 @router.get("/templates")
@@ -110,6 +117,25 @@ def get_metrics(campaign_id: int, db: Session = Depends(get_db)):
 async def optimize_campaign(campaign_id: int, db: Session = Depends(get_db)):
     """Step 7: Analyze results and get optimization suggestions."""
     return await campaign_service.optimize_campaign(campaign_id, db)
+
+
+# ─── Quick Campaign Creator ───
+
+@router.post("/quick")
+async def create_quick_campaign(body: QuickCampaignRequest, db: Session = Depends(get_db)):
+    """Create and send a lightweight campaign immediately — skips the full 7-step pipeline."""
+    return await campaign_service.create_quick_campaign(
+        name=body.name,
+        message=body.message,
+        audience=body.audience,
+        db=db,
+    )
+
+
+@router.get("/quick/list")
+def list_quick_campaigns():
+    """List only quick-type campaigns."""
+    return campaign_service.get_quick_campaigns()
 
 
 # ─── Full Pipeline ───

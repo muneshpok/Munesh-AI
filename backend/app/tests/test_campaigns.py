@@ -504,3 +504,190 @@ class TestFollowUpSequenceTypeFix:
         seq = FollowUpSequencer()
         sig = inspect.signature(seq.get_current_step)
         assert "sequence_type" in sig.parameters
+
+
+# ─── Quick Campaign Creator Tests ───
+
+
+class TestQuickCampaignCreator:
+    """Test the lightweight quick-campaign creator."""
+
+    def _make_leads(self, statuses):
+        """Create mock leads with given statuses."""
+        from app.models.models import LeadStatus
+
+        leads = []
+        for i, status in enumerate(statuses):
+            lead = MagicMock()
+            lead.phone = f"+100{i}"
+            lead.name = f"Lead {i}"
+            lead.status = LeadStatus(status) if isinstance(status, str) else status
+            lead.lead_score = 50
+            leads.append(lead)
+        return leads
+
+    def _mock_db(self, leads):
+        """Create a properly mocked DB session that supports query chains."""
+        mock_db = MagicMock()
+        # db.query(Lead).all() returns leads
+        # db.query(Message).filter(...).count() returns 0
+        # db.query(Message).filter(...).order_by(...).first() returns None
+        # db.query(Lead).filter(...).first() returns None
+        def query_side_effect(model):
+            q = MagicMock()
+            from app.models.models import Lead as LeadModel
+            if model is LeadModel:
+                q.all.return_value = leads
+                q.filter.return_value = q
+                q.first.return_value = None
+            else:
+                q.filter.return_value = q
+                q.order_by.return_value = q
+                q.count.return_value = 0
+                q.first.return_value = None
+                q.all.return_value = []
+            return q
+        mock_db.query.side_effect = query_side_effect
+        return mock_db
+
+    def test_quick_campaign_creates_and_completes(self):
+        """Quick campaign should create, send, and complete immediately."""
+        from app.services.campaigns import CampaignService
+
+        svc = CampaignService()
+        mock_db = self._mock_db(self._make_leads(["new", "contacted"]))
+
+        with patch("app.services.campaigns.whatsapp_service") as mock_wa:
+            mock_wa.send_text_message = AsyncMock(return_value={"success": True})
+            result = asyncio.get_event_loop().run_until_complete(
+                svc.create_quick_campaign(
+                    name="Flash Sale",
+                    message="Hi {name}! 50% off today!",
+                    audience="all",
+                    db=mock_db,
+                )
+            )
+
+        assert result["name"] == "Flash Sale"
+        assert result["template_type"] == "quick"
+        assert result["status"] == "completed"
+        assert result["metrics"]["total_targeted"] == 2
+        assert result["metrics"]["sent"] == 2
+        assert len(result["messages"]) == 2
+
+    def test_quick_campaign_personalises_name(self):
+        """Quick campaign should replace {name} with lead name."""
+        from app.services.campaigns import CampaignService
+
+        svc = CampaignService()
+        mock_db = self._mock_db(self._make_leads(["new"]))
+
+        with patch("app.services.campaigns.whatsapp_service") as mock_wa:
+            mock_wa.send_text_message = AsyncMock(return_value={"success": True})
+            result = asyncio.get_event_loop().run_until_complete(
+                svc.create_quick_campaign(
+                    name="Test",
+                    message="Hello {name}, welcome!",
+                    audience="all",
+                    db=mock_db,
+                )
+            )
+
+        assert "Lead 0" in result["messages"][0]["message"]
+        assert "{name}" not in result["messages"][0]["message"]
+
+    def test_quick_campaign_handles_send_failure(self):
+        """Quick campaign should track failed messages."""
+        from app.services.campaigns import CampaignService
+
+        svc = CampaignService()
+        mock_db = self._mock_db(self._make_leads(["new"]))
+
+        with patch("app.services.campaigns.whatsapp_service") as mock_wa:
+            mock_wa.send_text_message = AsyncMock(return_value={
+                "success": False,
+                "error": "Invalid number",
+            })
+            result = asyncio.get_event_loop().run_until_complete(
+                svc.create_quick_campaign(
+                    name="Fail Test",
+                    message="Hi {name}!",
+                    audience="all",
+                    db=mock_db,
+                )
+            )
+
+        assert result["metrics"]["sent"] == 0
+        assert result["messages"][0]["status"] == "failed"
+        assert result["messages"][0]["error"] == "Invalid number"
+        assert result["status"] == "completed"
+
+    def test_quick_campaign_id_increments(self):
+        """Each quick campaign should get a unique incrementing ID."""
+        from app.services.campaigns import CampaignService
+
+        svc = CampaignService()
+        mock_db = self._mock_db([])
+
+        with patch("app.services.campaigns.whatsapp_service") as mock_wa:
+            mock_wa.send_text_message = AsyncMock(return_value={"success": True})
+            loop = asyncio.get_event_loop()
+            c1 = loop.run_until_complete(svc.create_quick_campaign("A", "msg", "all", mock_db))
+            c2 = loop.run_until_complete(svc.create_quick_campaign("B", "msg", "all", mock_db))
+
+        assert c2["id"] == c1["id"] + 1
+
+    def test_get_quick_campaigns_filters_correctly(self):
+        """get_quick_campaigns should return only quick-type campaigns."""
+        from app.services.campaigns import CampaignService
+
+        svc = CampaignService()
+        mock_db = self._mock_db([])
+
+        # Create one full-pipeline campaign and one quick campaign
+        svc.plan_campaign(template_type="demo_push")
+        with patch("app.services.campaigns.whatsapp_service") as mock_wa:
+            mock_wa.send_text_message = AsyncMock(return_value={"success": True})
+            asyncio.get_event_loop().run_until_complete(
+                svc.create_quick_campaign("Quick One", "msg", "all", mock_db)
+            )
+
+        all_campaigns = svc.get_all_campaigns()
+        quick_only = svc.get_quick_campaigns()
+
+        assert len(all_campaigns) == 2
+        assert len(quick_only) == 1
+        assert quick_only[0]["template_type"] == "quick"
+        assert quick_only[0]["name"] == "Quick One"
+
+
+class TestQuickCampaignAPI:
+    """Test quick campaign API endpoints."""
+
+    def _get_client(self):
+        from fastapi.testclient import TestClient
+        from app.main import app
+
+        return TestClient(app)
+
+    def test_post_quick_campaign(self):
+        client = self._get_client()
+        resp = client.post(
+            "/api/campaigns/quick",
+            json={
+                "name": "API Quick Test",
+                "message": "Hi {name}!",
+                "audience": "all",
+            },
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["name"] == "API Quick Test"
+        assert data["template_type"] == "quick"
+        assert data["status"] == "completed"
+
+    def test_get_quick_campaigns_list(self):
+        client = self._get_client()
+        resp = client.get("/api/campaigns/quick/list")
+        assert resp.status_code == 200
+        assert isinstance(resp.json(), list)

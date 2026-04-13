@@ -63,7 +63,13 @@ export default function CampaignsPage() {
   >({});
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
-  const [activeTab, setActiveTab] = useState<"create" | "campaigns" | "pipeline">("create");
+  const [quickRunning, setQuickRunning] = useState(false);
+  const [activeTab, setActiveTab] = useState<"create" | "quick" | "campaigns" | "pipeline">("create");
+
+  // Quick campaign form state
+  const [quickName, setQuickName] = useState("");
+  const [quickMessage, setQuickMessage] = useState("");
+  const [quickAudience, setQuickAudience] = useState("all");
 
   // Create form state
   const [selectedTemplate, setSelectedTemplate] = useState("demo_push");
@@ -106,6 +112,32 @@ export default function CampaignsPage() {
       // handled
     } finally {
       setRunning(false);
+    }
+  };
+
+  const sendQuickCampaign = async () => {
+    if (!quickName.trim() || !quickMessage.trim()) return;
+    setQuickRunning(true);
+    try {
+      const res = await fetch(`${API_URL}/api/campaigns/quick`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: quickName,
+          message: quickMessage,
+          audience: quickAudience,
+        }),
+      });
+      const campaign = await res.json();
+      setCampaigns((prev) => [...prev, campaign]);
+      setQuickName("");
+      setQuickMessage("");
+      setQuickAudience("all");
+      setActiveTab("campaigns");
+    } catch {
+      // handled
+    } finally {
+      setQuickRunning(false);
     }
   };
 
@@ -203,6 +235,7 @@ export default function CampaignsPage() {
         {(
           [
             { key: "create", label: "Create Campaign" },
+            { key: "quick", label: "Quick Send" },
             { key: "campaigns", label: `Campaigns (${campaigns.length})` },
             { key: "pipeline", label: "Pipeline Steps" },
           ] as const
@@ -334,7 +367,75 @@ export default function CampaignsPage() {
         </div>
       )}
 
-      {/* Campaigns List Tab */}
+      {/* Quick Campaign Tab */}
+      {activeTab === "quick" && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold mb-1">Quick Campaign</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Send a message to your leads instantly — no pipeline, no AI generation. Just name, message, and audience.
+          </p>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Campaign Name <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={quickName}
+              onChange={(e) => setQuickName(e.target.value)}
+              placeholder="e.g. Flash Sale Blast"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Message <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={quickMessage}
+              onChange={(e) => setQuickMessage(e.target.value)}
+              placeholder="Hi {name}! Check out our latest offer..."
+              rows={3}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Use {"{{name}}"} to personalise with the lead&apos;s name.
+            </p>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Target Audience
+            </label>
+            <select
+              value={quickAudience}
+              onChange={(e) => setQuickAudience(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+            >
+              {Object.entries(audienceFilters).map(([key, f]) => (
+                <option key={key} value={key}>
+                  {f.name} — {f.description}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={sendQuickCampaign}
+            disabled={quickRunning || !quickName.trim() || !quickMessage.trim()}
+            className={`w-full py-3 rounded-lg font-semibold text-white transition ${
+              quickRunning || !quickName.trim() || !quickMessage.trim()
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-emerald-600 hover:bg-emerald-700"
+            }`}
+          >
+            {quickRunning ? "Sending..." : "Send Now"}
+          </button>
+        </div>
+      )}
+
+      {/* Campaigns List Tab */
       {activeTab === "campaigns" && (
         <div className="space-y-4">
           {campaigns.length === 0 ? (

@@ -565,6 +565,120 @@ Give 2-3 specific, actionable suggestions to improve results. Keep each under 30
             for key, val in AUDIENCE_FILTERS.items()
         }
 
+    # ─── Quick Campaign Creator ───
+
+    async def create_quick_campaign(
+        self,
+        name: str,
+        message: str,
+        audience: str,
+        db: Session,
+    ) -> dict:
+        """Create a lightweight campaign and send immediately — skips the full
+        7-step pipeline.  Mirrors the simple helper the user provided while
+        still integrating with the existing CRM / WhatsApp infrastructure.
+
+        Steps performed:
+        1. Create a minimal campaign record
+        2. Resolve the audience filter against CRM leads
+        3. Personalise ``message`` (``{name}`` placeholder)
+        4. Send each message via WhatsApp service
+        5. Compute basic metrics
+        """
+        self._campaign_counter += 1
+        campaign: dict = {
+            "id": self._campaign_counter,
+            "name": name,
+            "template_type": "quick",
+            "description": "Quick campaign — lightweight, no full pipeline",
+            "goal": "custom",
+            "message_style": "custom",
+            "audience_filter": audience,
+            "custom_message": message,
+            "status": "scheduled",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "completed_at": None,
+            "audience": [],
+            "messages": [],
+            "metrics": {
+                "total_targeted": 0,
+                "sent": 0,
+                "delivered": 0,
+                "responded": 0,
+                "converted": 0,
+                "response_rate": 0.0,
+                "conversion_rate": 0.0,
+            },
+            "optimization_notes": [],
+        }
+        self._campaigns.append(campaign)
+
+        # --- Resolve audience ---
+        all_leads = db.query(Lead).all()
+        if audience == "stale":
+            seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+            stale_phones: set = set()
+            for lead in all_leads:
+                if lead.status in (LeadStatus.CONTACTED, LeadStatus.NEW):
+                    last_msg = (
+                        db.query(Message)
+                        .filter(Message.phone == lead.phone)
+                        .order_by(Message.created_at.desc())
+                        .first()
+                    )
+                    if not last_msg or last_msg.created_at.replace(tzinfo=timezone.utc) < seven_days_ago:
+                        stale_phones.add(lead.phone)
+            leads = [l for l in all_leads if l.phone in stale_phones]
+        else:
+            filter_def = AUDIENCE_FILTERS.get(audience, AUDIENCE_FILTERS["all"])
+            leads = filter_def["filter_fn"](all_leads)
+
+        campaign["audience"] = [
+            {
+                "phone": l.phone,
+                "name": l.name or "there",
+                "status": l.status.value if isinstance(l.status, LeadStatus) else l.status,
+                "score": l.lead_score or 0,
+            }
+            for l in leads
+        ]
+        campaign["metrics"]["total_targeted"] = len(leads)
+
+        # --- Send messages ---
+        sent = 0
+        for lead_info in campaign["audience"]:
+            personalised = message.replace("{name}", lead_info["name"])
+            result = await whatsapp_service.send_text_message(lead_info["phone"], personalised)
+            status = "sent" if result.get("success") else "failed"
+            if status == "sent":
+                sent += 1
+            campaign["messages"].append({
+                "phone": lead_info["phone"],
+                "name": lead_info["name"],
+                "message": personalised,
+                "status": status,
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "error": result.get("error"),
+            })
+
+        # --- Metrics ---
+        campaign["metrics"]["sent"] = sent
+        campaign["status"] = "completed"
+        campaign["completed_at"] = datetime.now(timezone.utc).isoformat()
+
+        # Compute live response / conversion from DB
+        self.get_campaign_metrics(campaign["id"], db)
+
+        logger.info(
+            f"Quick campaign '{name}' (ID: {campaign['id']}): "
+            f"targeted {len(leads)}, sent {sent}"
+        )
+        return campaign
+
+    def get_quick_campaigns(self) -> List[dict]:
+        """Return only quick-type campaigns."""
+        return [c for c in self._campaigns if c.get("template_type") == "quick"]
+
 
 # Singleton instance
 campaign_service = CampaignService()
