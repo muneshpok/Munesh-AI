@@ -2,6 +2,28 @@
 
 const plans = [
   {
+    name: "Free",
+    price: 0,
+    description: "Try Munesh AI with zero commitment — perfect for exploring",
+    features: [
+      "1 AI Agent (Chat only)",
+      "50 messages/month",
+      "Basic CRM",
+      "WhatsApp integration",
+      "Community support",
+    ],
+    notIncluded: [
+      "Sales/Support/Booking agents",
+      "Analytics dashboard",
+      "Follow-up sequences",
+      "Self-improvement AI",
+      "API access",
+    ],
+    cta: "Get Started Free",
+    popular: false,
+    color: "gray",
+  },
+  {
     name: "Starter",
     price: 49,
     description: "Perfect for small businesses getting started with AI automation",
@@ -82,7 +104,7 @@ const faqs = [
   },
   {
     q: "What happens if I exceed my message limit?",
-    a: "On the Starter plan, additional messages are $0.05 each. Pro and Enterprise have unlimited messages included.",
+    a: "On the Free plan, you're limited to 50 messages/month. On Starter, additional messages beyond 500 are $0.05 each. Pro and Enterprise have unlimited messages included.",
   },
   {
     q: "Do I need technical knowledge to set this up?",
@@ -111,7 +133,7 @@ export default function PricingPage() {
       </div>
 
       {/* Plans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {plans.map((plan) => (
           <div
             key={plan.name}
@@ -135,10 +157,19 @@ export default function PricingPage() {
             </div>
 
             <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900">
-                ${plan.price}
-              </span>
-              <span className="text-gray-500 text-sm">/month</span>
+              {plan.price === 0 ? (
+                <>
+                  <span className="text-4xl font-bold text-gray-900">Free</span>
+                  <span className="text-gray-500 text-sm"> forever</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-4xl font-bold text-gray-900">
+                    ${plan.price}
+                  </span>
+                  <span className="text-gray-500 text-sm">/month</span>
+                </>
+              )}
             </div>
 
             <button

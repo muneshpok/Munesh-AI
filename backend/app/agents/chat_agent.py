@@ -26,7 +26,8 @@ Key talking points:
 - 4 specialized agents handle sales, support, bookings, and general chat
 - Self-improving AI that gets smarter over time
 - CRM with lead scoring and analytics built in
-- Plans start at just $49/month
+- Free plan available — no credit card, no commitment
+- Plans start at just $49/month for more features
 
 Keep responses under 150 words, conversational, and always end with a question to keep the dialogue going."""
 

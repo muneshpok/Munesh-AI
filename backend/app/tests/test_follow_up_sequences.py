@@ -276,6 +276,10 @@ class TestSalesAgentPrompt:
         assert "$149" in SalesAgent.SYSTEM_PROMPT
         assert "$499" in SalesAgent.SYSTEM_PROMPT
 
+    def test_prompt_has_free_tier(self):
+        assert "Free" in SalesAgent.SYSTEM_PROMPT
+        assert "$0" in SalesAgent.SYSTEM_PROMPT
+
     def test_prompt_has_conversion_playbook(self):
         assert "DISCOVER" in SalesAgent.SYSTEM_PROMPT
         assert "CLOSE" in SalesAgent.SYSTEM_PROMPT
@@ -295,6 +299,9 @@ class TestChatAgentPrompt:
 
     def test_prompt_mentions_pricing(self):
         assert "$49" in ChatAgent.SYSTEM_PROMPT
+
+    def test_prompt_mentions_free_plan(self):
+        assert "Free plan" in ChatAgent.SYSTEM_PROMPT or "free plan" in ChatAgent.SYSTEM_PROMPT.lower()
 
     def test_prompt_has_talking_points(self):
         assert "WhatsApp" in ChatAgent.SYSTEM_PROMPT
