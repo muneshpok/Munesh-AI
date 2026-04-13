@@ -172,3 +172,59 @@ class AnalyticsInsights(BaseModel):
     stale_leads: List[dict]  # leads needing attention
     top_leads: List[dict]  # highest scored leads
     recommendations: List[str]  # AI-generated recommendations
+
+
+# --- Self-Improvement Agent Schemas ---
+
+class PromptVersionResponse(BaseModel):
+    id: int
+    agent_type: str
+    version: int
+    prompt_text: str
+    is_active: int
+    performance_score: Optional[float] = None
+    reason: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ImprovementLogResponse(BaseModel):
+    id: int
+    improvement_type: str
+    target: str
+    description: str
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    rationale: Optional[str] = None
+    impact_metrics: Optional[dict] = None
+    status: str
+    created_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class StrategyConfigResponse(BaseModel):
+    id: int
+    config_key: str
+    config_value: str
+    config_type: str
+    category: str
+    description: Optional[str] = None
+    updated_by: str
+    updated_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
+class SelfImprovementReport(BaseModel):
+    """Report from a self-improvement cycle."""
+    cycle_id: str
+    timestamp: str
+    improvements_made: List[dict]
+    prompts_updated: int
+    keywords_updated: int
+    strategies_updated: int
+    follow_ups_optimized: int
+    insights: List[str]
+    next_recommendations: List[str]

@@ -9,8 +9,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import init_db, SessionLocal
 from app.core.logging import logger
-from app.routes import whatsapp, crm, health, analytics
+from app.routes import whatsapp, crm, health, analytics, self_improvement
 from app.services.daily_loop import daily_loop
+from app.services.self_improvement import self_improvement_agent
 
 
 def create_app() -> FastAPI:
@@ -41,13 +42,21 @@ def create_app() -> FastAPI:
     app.include_router(whatsapp.router)
     app.include_router(crm.router)
     app.include_router(analytics.router)
+    app.include_router(self_improvement.router)
 
     @app.on_event("startup")
     async def startup() -> None:
-        """Initialize database and start daily loop scheduler."""
+        """Initialize database, self-improvement defaults, and start schedulers."""
         logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
         init_db()
         logger.info("Database initialized")
+        # Initialize self-improvement defaults (prompts + strategy configs)
+        db = SessionLocal()
+        try:
+            self_improvement_agent.initialize_defaults(db)
+            logger.info("Self-Improvement Agent defaults initialized")
+        finally:
+            db.close()
         # Start background daily loop scheduler
         asyncio.create_task(_daily_loop_scheduler())
         logger.info("Daily Loop scheduler started")

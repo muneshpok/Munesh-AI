@@ -120,3 +120,48 @@ class AutomationLog(Base):
     details = Column(JSON, nullable=True)
     status = Column(String(20), default="completed")  # completed, failed, skipped
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class PromptVersion(Base):
+    """Versioned prompts for each agent — tracks prompt evolution over time."""
+    __tablename__ = "prompt_versions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    agent_type = Column(String(50), nullable=False, index=True)  # chat, sales, support, booking
+    version = Column(Integer, nullable=False, default=1)
+    prompt_text = Column(Text, nullable=False)
+    is_active = Column(Integer, default=1)  # 1 = currently active, 0 = archived
+    performance_score = Column(Float, nullable=True)  # measured after deployment
+    reason = Column(Text, nullable=True)  # why this version was created
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ImprovementLog(Base):
+    """Tracks all self-improvement actions and their rationale."""
+    __tablename__ = "improvement_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    improvement_type = Column(String(50), nullable=False, index=True)  # prompt, keyword, follow_up, strategy
+    target = Column(String(100), nullable=False)  # e.g. "sales_agent", "follow_up_timing"
+    description = Column(Text, nullable=False)
+    old_value = Column(Text, nullable=True)  # what it was before
+    new_value = Column(Text, nullable=True)  # what it changed to
+    rationale = Column(Text, nullable=True)  # why the change was made
+    impact_metrics = Column(JSON, nullable=True)  # measured impact after change
+    status = Column(String(20), default="applied")  # applied, reverted, pending
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class StrategyConfig(Base):
+    """Dynamic strategy configuration that the self-improvement agent can tune."""
+    __tablename__ = "strategy_configs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    config_key = Column(String(100), unique=True, nullable=False, index=True)
+    config_value = Column(Text, nullable=False)
+    config_type = Column(String(20), default="string")  # string, int, float, json
+    category = Column(String(50), nullable=False)  # keywords, timing, thresholds, templates
+    description = Column(Text, nullable=True)
+    updated_by = Column(String(50), default="system")  # system or self_improvement
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

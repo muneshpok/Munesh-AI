@@ -12,6 +12,7 @@ from app.services.whatsapp import whatsapp_service
 from app.services.memory import memory_service
 from app.core.logging import logger
 from app.core.config import settings
+from app.services.self_improvement import self_improvement_agent
 
 
 class DailyLoop:
@@ -72,6 +73,25 @@ class DailyLoop:
         if decisions.get("escalate_high_intent"):
             escalated = self._escalate_high_intent(db)
             actions_taken.append(f"Escalated {escalated} high-intent lead(s)")
+
+        # Run self-improvement cycle
+        logger.info("[4.5/5] Running self-improvement cycle...")
+        try:
+            si_report = await self_improvement_agent.run_improvement_cycle(db)
+            si_count = len(si_report.get("improvements_made", []))
+            if si_count > 0:
+                actions_taken.append(
+                    f"Self-improvement: {si_count} update(s) applied"
+                )
+                for imp in si_report["improvements_made"]:
+                    actions_taken.append(
+                        f"  → {imp['type']}: {imp['description']}"
+                    )
+            else:
+                actions_taken.append("Self-improvement: no changes needed")
+        except Exception as e:
+            logger.error(f"Self-improvement cycle failed: {e}")
+            actions_taken.append(f"Self-improvement: skipped (error: {e})")
 
         # --- STEP 5: DEPLOY (Save report) ---
         logger.info("[5/5] Saving daily report...")
