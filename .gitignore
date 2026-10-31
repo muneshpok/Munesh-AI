@@ -22,3 +22,25 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+venv/
+.venv/
+*.db
+
+# Environment
+.env
+.env.local
+
+# Next.js
+.next/
+out/
+
+# Backend
+backend/munesh_ai.db
